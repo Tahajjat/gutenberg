@@ -30,6 +30,8 @@ describe( 'DocumentOutline', () => {
 		nodeName: 'H3',
 	} );
 
+	const nestedHeading = createBlock( 'core/columns', undefined, [ headingChild ] );
+
 	describe( 'no header blocks present', () => {
 		it( 'should not render when no blocks provided', () => {
 			const wrapper = shallow( <DocumentOutline /> );
@@ -72,6 +74,15 @@ describe( 'DocumentOutline', () => {
 			const wrapper = shallow( <DocumentOutline blocks={ blocks } /> );
 
 			expect( wrapper ).toMatchSnapshot();
+		} );
+	} );
+
+	describe( 'nested headings', () => {
+		it( 'should render even if the heading is nested', () => {
+			const blocks = [ nestedHeading ];
+			const wrapper = shallow( <DocumentOutline blocks={ blocks } /> );
+
+			expect( wrapper.contains( 'Heading child' ) ).toBeTruthy();
 		} );
 	} );
 } );

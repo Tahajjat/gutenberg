@@ -1,7 +1,7 @@
 /**
  * External dependencies
  */
-import { countBy } from 'lodash';
+import { reduce } from 'lodash';
 
 /**
  * WordPress dependencies
@@ -16,9 +16,7 @@ import { withSelect } from '@wordpress/data';
 import WordCount from '../word-count';
 import DocumentOutline from '../document-outline';
 
-function TableOfContentsPanel( { blocks } ) {
-	const blockCount = countBy( blocks, 'name' );
-
+function TableOfContentsPanel( { headingCount, paragraphCount, numberOfBlocks } ) {
 	return (
 		<Fragment>
 			<div className="table-of-contents__counts">
@@ -29,23 +27,23 @@ function TableOfContentsPanel( { blocks } ) {
 				<div className="table-of-contents__count">
 					{ __( 'Headings' ) }
 					<span className="table-of-contents__number">
-						{ blockCount[ 'core/heading' ] || 0 }
+						{ headingCount }
 					</span>
 				</div>
 				<div className="table-of-contents__count">
 					{ __( 'Paragraphs' ) }
 					<span className="table-of-contents__number">
-						{ blockCount[ 'core/paragraph' ] || 0 }
+						{ paragraphCount }
 					</span>
 				</div>
 				<div className="table-of-contents__count">
 					{ __( 'Blocks' ) }
 					<span className="table-of-contents__number">
-						{ blocks.length }
+						{ numberOfBlocks }
 					</span>
 				</div>
 			</div>
-			{ blockCount[ 'core/heading' ] > 0 && (
+			{ headingCount > 0 && (
 				<Fragment>
 					<hr />
 					<span className="table-of-contents__title">
@@ -58,8 +56,20 @@ function TableOfContentsPanel( { blocks } ) {
 	);
 }
 
+const blockCount = ( blocksArray = [], name ) => reduce(
+	blocksArray,
+	( count, block ) =>
+		count +
+		( ! name || block.name === name ? 1 : 0 ) +
+		( block.innerBlocks ? blockCount( block.innerBlocks, name ) : 0 ),
+	0
+);
+
 export default withSelect( ( select ) => {
+	const blocks = select( 'core/editor' ).getBlocks();
 	return {
-		blocks: select( 'core/editor' ).getBlocks(),
+		headingCount: blockCount( blocks, 'core/heading' ),
+		paragraphCount: blockCount( blocks, 'core/paragraph' ),
+		numberOfBlocks: blockCount( blocks ),
 	};
 } )( TableOfContentsPanel );
