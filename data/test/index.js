@@ -100,11 +100,18 @@ describe( 'select', () => {
 } );
 
 describe( 'withSelect', () => {
+	let wrapper;
+
 	const unsubscribes = [];
 	afterEach( () => {
 		let unsubscribe;
 		while ( ( unsubscribe = unsubscribes.shift() ) ) {
 			unsubscribe();
+		}
+
+		if ( wrapper ) {
+			wrapper.unmount();
+			wrapper = null;
 		}
 	} );
 
@@ -131,7 +138,7 @@ describe( 'withSelect', () => {
 			data: _select( 'reactReducer' ).reactSelector( ownProps.keyName ),
 		} ) )( ( props ) => <div>{ props.data }</div> );
 
-		const wrapper = mount( <Component keyName="reactKey" /> );
+		wrapper = mount( <Component keyName="reactKey" /> );
 
 		// Wrapper is the enhanced component. Find props on the rendered child.
 		const child = wrapper.childAt( 0 );
@@ -140,8 +147,6 @@ describe( 'withSelect', () => {
 			data: 'reactState',
 		} );
 		expect( wrapper.text() ).toBe( 'reactState' );
-
-		wrapper.unmount();
 	} );
 
 	it( 'should rerun selection on state changes', () => {
@@ -174,15 +179,33 @@ describe( 'withSelect', () => {
 			</button>
 		) );
 
-		const wrapper = mount( <Component /> );
+		wrapper = mount( <Component /> );
 
 		const button = wrapper.find( 'button' );
 
 		button.simulate( 'click' );
 
 		expect( button.text() ).toBe( '1' );
+	} );
 
-		wrapper.unmount();
+	it( 'should not rerun selection on unchanging state', () => {
+		const store = registerReducer( 'unchanging', ( state = {} ) => state );
+
+		registerSelectors( 'unchanging', {
+			getState: ( state ) => state,
+		} );
+
+		const mapSelectToProps = jest.fn();
+
+		const Component = compose( [
+			withSelect( mapSelectToProps ),
+		] )( () => <div /> );
+
+		wrapper = mount( <Component /> );
+
+		store.dispatch( { type: 'dummy' } );
+
+		expect( mapSelectToProps ).toHaveBeenCalledTimes( 1 );
 	} );
 
 	it( 'should rerun selection on props changes', () => {
@@ -202,13 +225,11 @@ describe( 'withSelect', () => {
 			count: _select( 'counter' ).getCount( ownProps.offset ),
 		} ) )( ( props ) => <div>{ props.count }</div> );
 
-		const wrapper = mount( <Component offset={ 0 } /> );
+		wrapper = mount( <Component offset={ 0 } /> );
 
 		wrapper.setProps( { offset: 10 } );
 
 		expect( wrapper.childAt( 0 ).text() ).toBe( '10' );
-
-		wrapper.unmount();
 	} );
 
 	it( 'ensures component is still mounted before setting state', () => {
@@ -236,7 +257,7 @@ describe( 'withSelect', () => {
 			count: _select( 'counter' ).getCount( ownProps.offset ),
 		} ) )( ( props ) => <div>{ props.count }</div> );
 
-		const wrapper = mount( <Component offset={ 0 } /> );
+		wrapper = mount( <Component offset={ 0 } /> );
 
 		store.dispatch( { type: 'increment' } );
 	} );
@@ -281,8 +302,6 @@ describe( 'withDispatch', () => {
 		wrapper.find( 'button' ).simulate( 'click' );
 
 		expect( store.getState() ).toBe( 2 );
-
-		wrapper.unmount();
 	} );
 } );
 
@@ -353,6 +372,16 @@ describe( 'subscribe', () => {
 		store.dispatch( { type: 'dummy' } );
 
 		expect( secondListener ).toHaveBeenCalled();
+	} );
+
+	it( 'does not call listeners if state has not changed', () => {
+		const store = registerReducer( 'unchanging', ( state = {} ) => state );
+		const listener = jest.fn();
+		subscribeWithUnsubscribe( listener );
+
+		store.dispatch( { type: 'dummy' } );
+
+		expect( listener ).not.toHaveBeenCalled();
 	} );
 } );
 
